@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pemetaan Koordinat Gambar</title>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#141922; --panel2:#1b222e; --line:#26303f;
+    --txt:#e6eaf2; --muted:#8b97ab; --acc:#4c8dff; --acc2:#3d7cf0;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--txt);overflow:hidden;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:13px;
+  }
+  .app{display:flex;height:100vh}
+
+  /* ============ PANEL ============ */
+  .panel{
+    width:350px;flex:0 0 350px;background:var(--panel);
+    border-right:1px solid var(--line);
+    display:flex;flex-direction:column;min-height:0;
+  }
+  .panel > header{padding:14px 16px;border-bottom:1px solid var(--line)}
+  .panel > header h1{margin:0;font-size:14px;font-weight:600}
+  .panel > header p{margin:4px 0 0;font-size:11px;color:var(--muted)}
+  .panel .body{flex:1;overflow-y:auto;padding:14px 16px;min-height:0}
+  .panel .foot{
+    padding:12px 16px;border-top:1px solid var(--line);
+    display:flex;gap:8px;flex-wrap:wrap;
+  }
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:8px 12px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--txt);cursor:pointer;
+    font-size:12px;font-weight:500;transition:.15s;user-select:none;
+    font-family:inherit;
+  }
+  .btn:hover{background:#243044;border-color:#33425a}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  .btn.primary:hover{background:var(--acc2)}
+  .btn.danger:hover{background:#3a1c22;border-color:#6b2a35;color:#ff9aa8}
+  .btn.sm{padding:6px 9px;font-size:11px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  .sec{margin-bottom:16px}
+  .sec-title{
+    font-size:10px;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--muted);font-weight:700;margin:0 0 8px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .sec-title .count{
+    background:var(--panel2);border:1px solid var(--line);
+    border-radius:20px;padding:1px 7px;font-size:10px;letter-spacing:0;
+  }
+
+  .info{
+    background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:9px 11px;font-size:11px;color:var(--muted);
+    line-height:1.7;word-break:break-all;
+  }
+  .info b{color:var(--txt);font-weight:600}
+
+  /* zoom */
+  .zoom-row{display:flex;align-items:center;gap:8px}
+  .zoom-row input[type=range]{
+    flex:1;accent-color:var(--acc);height:4px;cursor:pointer;
+  }
+  .zoom-val{
+    font-variant-numeric:tabular-nums;font-size:11px;color:var(--muted);
+    min-width:42px;text-align:right;
+  }
+
+  /* list titik */
+  .list-head{
+    display:grid;grid-template-columns:14px 1fr 58px 58px 24px;
+    gap:6px;padding:0 7px 6px;font-size:10px;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.06em;font-weight:700;
+  }
+  .list-head span:nth-child(3),
+  .list-head span:nth-child(4){text-align:center}
+
+  .pt{
+    display:grid;grid-template-columns:14px 1fr 58px 58px 24px;
+    gap:6px;align-items:center;padding:5px 6px;border-radius:8px;
+    border:1px solid transparent;transition:.12s;
+  }
+  .pt:hover{background:#171e2a}
+  .pt.sel{background:#1c2637;border-color:#33425a}
+  .pt .swatch{
+    width:12px;height:12px;border-radius:50%;justify-self:center;
+    box-shadow:0 0 0 2px rgba(255,255,255,.08);cursor:pointer;
+  }
+  .pt input{
+    width:100%;background:#0d1219;border:1px solid var(--line);
+    color:var(--txt);border-radius:6px;padding:5px 6px;
+    font-size:11px;font-family:inherit;min-width:0;
+  }
+  .pt input:focus{outline:none;border-color:var(--acc);background:#0a1a33}
+  .pt input[type=number]{text-align:center;-moz-appearance:textfield}
+  .pt input[type=number]::-webkit-outer-spin-button,
+  .pt input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .pt .del{
+    background:none;border:none;color:#5d6a80;cursor:pointer;
+    font-size:13px;padding:2px;border-radius:4px;line-height:1;font-family:inherit;
+  }
+  .pt .del:hover{color:#ff6b81;background:#2a161b}
+
+  .empty{
+    text-align:center;color:var(--muted);font-size:11px;
+    padding:18px 8px;border:1px dashed var(--line);border-radius:8px;
+    line-height:1.6;
+  }
+
+  /* code preview */
+  pre.code{
+    margin:0;background:#0a0e14;border:1px solid var(--line);
+    border-radius:8px;padding:10px;font-size:10.5px;line-height:1.65;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    color:#9fe0b0;overflow:auto;max-height:190px;white-space:pre;
+  }
+  pre.code .cm{color:#4b5a70}
+
+  /* ============ STAGE ============ */
+  .stage{flex:1;overflow:auto;position:relative;background:#080b10;min-width:0}
+  .stage-inner{display:inline-block;padding:24px}
+  .sizer{position:relative}
+  .wrap{
+    position:absolute;top:0;left:0;transform-origin:0 0;
+    cursor:crosshair;display:none;
+    background:
+      repeating-conic-gradient(#191e27 0% 25%, #12161d 0% 50%) 50%/18px 18px;
+  }
+  .wrap.on{display:block}
+  .wrap img{
+    display:block;width:100%;height:100%;
+    user-select:none;-webkit-user-drag:none;pointer-events:none;
+    image-rendering:auto;
+  }
+  .wrap.zoom-pixel img{image-rendering:pixelated}
+
+  .marker{
+    position:absolute;width:0;height:0;transform-origin:0 0;
+    touch-action:none;
+  }
+  .marker .dot{
+    position:absolute;left:-6px;top:-6px;width:12px;height:12px;
+    border-radius:50%;background:var(--c);
+    border:2px solid #0b0e13;cursor:grab;
+    box-shadow:0 0 0 1px rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.6);
+    box-sizing:border-box;
+  }
+  .marker.sel .dot{
+    left:-8px;top:-8px;width:16px;height:16px;
+    box-shadow:0 0 0 2px #fff, 0 0 12px var(--c);
+    cursor:grabbing;
+  }
+  .marker .tag{
+    position:absolute;left:11px;top:-8px;white-space:nowrap;
+    background:rgba(10,14,20,.88);border:1px solid var(--line);
+    color:#dbe3ef;font-size:10px;padding:2px 6px;border-radius:5px;
+    pointer-events:none;font-weight:600;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    backdrop-filter:blur(4px);
+  }
+  .marker.sel .tag{border-color:var(--acc);color:#fff}
+
+  /* empty stage */
+  .empty-stage{
+    position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;text-align:center;color:var(--muted);
+    cursor:pointer;padding:40px;
+  }
+  .empty-stage.hide{display:none}
+  .empty-stage .big{font-size:44px;margin-bottom:10px;opacity:.85}
+  .empty-stage p{margin:0;font-size:13px;line-height:1.7}
+  .empty-stage small{display:block;margin-top:8px;font-size:11px;opacity:.65}
+
+  .drop-overlay{
+    position:absolute;inset:12px;border:2px dashed var(--acc);
+    border-radius:14px;background:rgba(76,141,255,.09);
+    display:none;align-items:center;justify-content:center;
+    font-size:15px;font-weight:600;color:#a9c8ff;pointer-events:none;z-index:50;
+  }
+  .drop-overlay.on{display:flex}
+
+  /* toast */
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,80px);
+    background:#1b2431;border:1px solid var(--line);color:var(--txt);
+    padding:9px 16px;border-radius:9px;font-size:12px;font-weight:500;
+    opacity:0;transition:.25s;pointer-events:none;z-index:99;
+    box-shadow:0 8px 28px rgba(0,0,0,.5);
+  }
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#2a3342;border-radius:6px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:#3a475c;background-clip:content-box}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ================= PANEL ================= -->
+  <aside class="panel">
+    <header>
+      <h1>📍 Pemetaan Koordinat Gambar</h1>
+      <p>Klik gambar untuk menandai titik → dapat x &amp; y otomatis</p>
+    </header>
+
+    <div class="body">
+      <!-- upload -->
+      <div class="sec">
+        <div class="sec-title">Gambar</div>
+        <label class="btn primary" style="width:100%">
+          📂 Pilih Gambar
+          <input type="file" id="fileInput" accept="image/*" hidden>
+        </label>
+        <div class="info" id="imgInfo" style="margin-top:10px">
+          Belum ada gambar dimuat.
+        </div>
+      </div>
+
+      <!-- zoom -->
+      <div class="sec">
+        <div class="sec-title">Zoom <span class="count" id="zoomPct">100%</span></div>
+        <div class="zoom-row">
+          <button class="btn sm" id="zoomFit" title="Sesuaikan layar">Fit</button>
+          <input type="range" id="zoomRange" min="5" max="400" value="100">
+          <button class="btn sm" id="zoom100" title="Ukuran asli 1:1">1:1</button>
+        </div>
+      </div>
+
+      <!-- titik -->
+      <div class="sec">
+        <div class="sec-title">
+          Titik Koordinat <span class="count" id="ptCount">0</span>
+        </div>
+        <div class="list-head" id="listHead" style="display:none">
+          <span></span><span>Nama</span><span>X</span><span>Y</span><span></span>
+        </div>
+        <div id="list"></div>
+      </div>
+
+      <!-- code -->
+      <div class="sec">
+        <div class="sec-title">
+          Variabel <span class="count" id="varCount">0</span>
+        </div>
+        <pre class="code" id="code"><span class="cm">// belum ada titik</span></pre>
+      </div>
+    </div>
+
+    <div class="foot">
+      <button class="btn sm" id="btnJson">⬇ JSON</button>
+      <button class="btn sm" id="btnCsv">⬇ CSV</button>
+      <button class="btn sm" id="btnCopy">📋 Copy</button>
+      <button class="btn sm danger" id="btnClear" style="margin-left:auto">🗑 Reset</button>
+    </div>
+  </aside>
+
+  <!-- ================= STAGE ================= -->
+  <main class="stage" id="stage">
+    <div class="stage-inner">
+      <div class="sizer" id="sizer">
+        <div class="wrap" id="wrap">
+          <img id="img" alt="">
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-stage" id="emptyStage">
+      <div>
+        <div class="big">🖼️</div>
+        <p><b>Klik di sini</b> untuk memilih gambar<br>atau drag &amp; drop gambar ke area ini</p>
+        <small>Bisa juga Ctrl+V (paste) gambar dari clipboard</small>
+      </div>
+    </div>
+
+    <div class="drop-overlay" id="dropOverlay">Lepaskan gambar di sini…</div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- elemen ---------- */
+  const stage      = document.getElementById('stage');
+  const sizer      = document.getElementById('sizer');
+  const wrap       = document.getElementById('wrap');
+  const imgEl      = document.getElementById('img');
+  const fileInput  = document.getElementById('fileInput');
+  const listEl     = document.getElementById('list');
+  const listHead   = document.getElementById('listHead');
+  const codeEl     = document.getElementById('code');
+  const imgInfo    = document.getElementById('imgInfo');
+  const ptCount    = document.getElementById('ptCount');
+  const varCount   = document.getElementById('varCount');
+  const zoomRange  = document.getElementById('zoomRange');
+  const zoomPct    = document.getElementById('zoomPct');
+  const emptyStage = document.getElementById('emptyStage');
+  const dropOv     = document.getElementById('dropOverlay');
+  const toastEl    = document.getElementById('toast');
+
+  /* ---------- state ---------- */
+  const state = {
+    points: [],       // {id, name, x, y, color}
+    nextId: 1,
+    zoom: 1,
+    selected: null,
+    imgName: '',
+    imgW: 0,
+    imgH: 0,
+    hasImage: false
+  };
+
+  /* ---------- util ---------- */
+  const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+  const round1 = v => Math.round(v * 10) / 10;
+  const escHtml = s => String(s).replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  let toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('on'), 1800);
+  }
+
+  /* Nama variabel unik & aman dipakai di kode */
+  function sanitizeVar(name) {
+    let v = String(name).trim().replace(/[^A-Za-z0-9_]/g, '_');
+    if (!v) v = 'titik';
+    if (/^[0-9]/.test(v)) v = '_' + v;
+    return v;
+  }
+
+  function uniquePointName(base, exceptId) {
+    let n = base, i = 2;
+    while (state.points.some(p => p.name === n && p.id !== exceptId)) {
+      n = base + '_' + i++;
+    }
+    return n;
+  }
+
+  /* ================= GAMBAR ================= */
+  function loadFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      toast('File harus berupa gambar');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => loadSrc(e.target.result, file.name || 'gambar');
+    reader.readAsDataURL(file);
+  }
+
+  function loadSrc(src, name) {
+    const probe = new Image();
+    probe.onload = () => {
+      state.imgW = probe.naturalWidth;
+      state.imgH = probe.naturalHeight;
+      state.imgName = name;
+      state.hasImage = true;
+
+      imgEl.src = src;
+      wrap.style.width  = state.imgW + 'px';
+      wrap.style.height = state.imgH + 'px';
+      wrap.classList.add('on');
+      emptyStage.classList.add('hide');
+
+      imgInfo.innerHTML =
+        `<b>${escHtml(name)}</b><br>` +
+        `Ukuran asli: <b>${state.imgW} × ${state.imgH}</b> px<br>` +
+        `Titik aktif: <b>${state.points.length}</b>`;
+
+      fitZoom();
+      renderAll();
+      toast('Gambar dimuat — klik untuk menambah titik');
+    };
+    probe.onerror = () => toast('Gagal memuat gambar');
+    probe.src = src;
+  }
+
+  /* ================= ZOOM ================= */
+  function setZoom(z, silent) {
+    state.zoom = clamp(z, 0.05, 4);
+    if (state.hasImage) {
+      wrap.style.transform = `scale(${state.zoom})`;
+      sizer.style.width  = (state.imgW * state.zoom) + 'px';
+      sizer.style.height = (state.imgH * state.zoom) + 'px';
+      wrap.classList.toggle('zoom-pixel', state.zoom >= 2.5);
+      renderMarkers();
+    }
+    zoomRange.value = Math.round(state.zoom * 100);
+    zoomPct.textContent = Math.round(state.zoom * 100) + '%';
+    if (!silent) { /* no-op */ }
+  }
+
+  function fitZoom() {
+    if (!state.hasImage) return;
+    const availW = stage.clientWidth  - 48;
+    const availH = stage.clientHeight - 48;
+    const z = Math.min(availW / state.imgW, availH / state.imgH, 1);
+    setZoom(z);
+  }
+
+  zoomRange.addEventListener('input', e => setZoom(+e.target.value / 100));
+  document.getElementById('zoomFit').addEventListener('click', fitZoom);
+  document.getElementById('zoom100').addEventListener('click', () => setZoom(1));
+
+  /* ================= TITIK ================= */
+  function addPoint(x, y) {
+    if (!state.hasImage) return;
+    const id = state.nextId++;
+    const p = {
+      id,
+      name: uniquePointName('titik_' + id),
+      x: round1(clamp(x, 0, state.imgW)),
+      y: round1(clamp(y, 0, state.imgH)),
+      color: `hsl(${(id * 67) % 360} 85% 62%)`
+    };
+    state.points.push(p);
+    state.selected = id;
+    renderAll();
+  }
+
+  function removePoint(id) {
+    const i = state.points.findIndex(p => p.id === id);
+    if (i === -1) return;
+    state.points.splice(i, 1);
+    if (state.selected === id) state.selected = null;
+    renderAll();
+  }
+
+  function selectPoint(id) {
+    state.selected = id;
+    listEl.querySelectorAll('.pt').forEach(el =>
+      el.classList.toggle('sel', +el.dataset.id === id));
+    wrap.querySelectorAll('.marker').forEach(el =>
+      el.classList.toggle('sel', +el.dataset.id === id));
+  }
+
+  /* ================= RENDER ================= */
+  function renderAll() {
+    renderMarkers();
+    renderList();
+    renderCode();
+    updateCounts();
+    if (state.hasImage) {
+      imgInfo.innerHTML =
+        `<b>${escHtml(state.imgName)}</b><br>` +
+        `Ukuran asli: <b>${state.imgW} × ${state.imgH}</b> px<br>` +
+        `Titik aktif: <b>${state.points.length}</b>`;
+    }
+  }
+
+  function updateCounts() {
+    ptCount.textContent = state.points.length;
+    varCount.textContent = state.points.length;
+    listHead.style.display = state.points.length ? 'grid' : 'none';
+  }
+
+  function renderMarkers() {
+    wrap.querySelectorAll('.marker').forEach(el => el.remove());
+    const inv = 1 / state.zoom;
+    for (const p of state.points) {
+      const m = document.createElement('div');
+      m.className = 'marker' + (p.id === state.selected ? ' sel' : '');
+      m.dataset.id = p.id;
+      m.style.left = p.x + 'px';
+      m.style.top  = p.y + 'px';
+      m.style.transform = `scale(${inv})`;
+      m.style.setProperty('--c', p.color);
+      m.innerHTML = `<div class="dot"></div><div class="tag">${escHtml(p.name)}</div>`;
+      m.addEventListener('pointerdown', ev => startDrag(ev, p));
+      wrap.appendChild(m);
+    }
+  }
+
+  function renderList() {
+    if (!state.points.length) {
+      listEl.innerHTML =
+        '<div class="empty">Belum ada titik.<br>Klik pada gambar untuk menambahkan.</div>';
+      return;
+    }
+    listEl.innerHTML = '';
+    for (const p of state.points) {
+      const row = document.createElement('div');
+      row.className = 'pt' + (p.id === state.selected ? ' sel' : '');
+      row.dataset.id = p.id;
+      row.innerHTML =
+        `<span class="swatch" style="background:${p.color}" title="${escHtml(p.name)}"></span>` +
+        `<input class="pname" value="${escHtml(p.name)}" spellcheck="false">` +
+        `<input class="px" type="number" step="0.1" value="${p.x}">` +
+        `<input class="py" type="number" step="0.1" value="${p.y}">` +
+        `<button class="del" title="Hapus titik">✕</button>`;
+
+      const nameIn = row.querySelector('.pname');
+      const xIn    = row.querySelector('.px');
+      const yIn    = row.querySelector('.py');
+
+      /* pilih saat fokus / klik */
+      row.addEventListener('focusin', () => selectPoint(p.id));
+      row.addEventListener('mousedown', () => selectPoint(p.id));
+
+      /* ganti nama */
+      nameIn.addEventListener('input', () => {
+        p.name = nameIn.value;
+        const tag = wrap.querySelector(`.marker[data-id="${p.id}"] .tag`);
+        if (tag) tag.textContent = p.name;
+        renderCode();
+      });
+      nameIn.addEventListener('blur', () => {
+        const safe = uniquePointName(p.name.trim() || ('titik_' + p.id), p.id);
+        p.name = safe;
+        nameIn.value = safe;
+        const tag = wrap.querySelector(`.marker[data-id="${p.id}"] .tag`);
+        if (tag) tag.textContent = safe;
+        renderCode();
+      });
+      nameIn.addEventListener('keydown', e => {
+        if (e.key === 'Enter') nameIn.blur();
+      });
+
+      /* ubah koordinat manual */
+      const applyXY = () => {
+        p.x = round1(clamp(parseFloat(xIn.value) || 0, 0, state.imgW));
+        p.y = round1(clamp(parseFloat(yIn.value) || 0, 0, state.imgH));
+        xIn.value = p.x;
+        yIn.value = p.y;
+        const mk = wrap.querySelector(`.marker[data-id="${p.id}"]`);
+        if (mk) { mk.style.left = p.x + 'px'; mk.style.top = p.y + 'px'; }
+        renderCode();
+      };
+      xIn.addEventListener('change', applyXY);
+      yIn.addEventListener('change', applyXY);
+
+      /* hapus */
+      row.querySelector('.del').addEventListener('click', e => {
+        e.stopPropagation();
+        removePoint(p.id);
+      });
+
+      listEl.appendChild(row);
+    }
+  }
+
+  function renderCode() {
+    if (!state.points.length) {
+      codeEl.innerHTML = '<span class="cm">// belum ada titik</span>';
+      return;
+    }
+    const used = new Set();
+    const lines = state.points.map(p => {
+      let v = sanitizeVar(p.name);
+      const base = v;
+      let i = 2;
+      while (used.has(v)) v = base + '_' + i++;
+      used.add(v);
+      return `const ${v} = { x: ${p.x}, y: ${p.y} };`;
+    });
+    codeEl.textContent = lines.join('\n');
+  }
+
+  /* ================= DRAG MARKER ================= */
+  function startDrag(ev, p) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    selectPoint(p.id);
+
+    const onMove = e => {
+      const r = wrap.getBoundingClientRect();
+      p.x = round1(clamp((e.clientX - r.left) / state.zoom, 0, state.imgW));
+      p.y = round1(clamp((e.clientY - r.top ) / state.zoom, 0, state.imgH));
+
+      const mk = wrap.querySelector(`.marker[data-id="${p.id}"]`);
+      if (mk) { mk.style.left = p.x + 'px'; mk.style.top = p.y + 'px'; }
+
+      const row = listEl.querySelector(`.pt[data-id="${p.id}"]`);
+      if (row) {
+        row.querySelector('.px').value = p.x;
+        row.querySelector('.py').value = p.y;
+      }
+      renderCode();
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }
+
+  /* ================= KLIK UNTUK TAMBAH TITIK ================= */
+  wrap.addEventListener('click', e => {
+    if (!state.hasImage) return;
+    if (e.target.closest('.marker')) return;   // klik marker ≠ tambah titik
+    const r = wrap.getBoundingClientRect();
+    const x = (e.clientX - r.left) / state.zoom;
+    const y = (e.clientY - r.top ) / state.zoom;
+    addPoint(x, y);
+  });
+
+  /* ================= EXPORT ================= */
+  function buildData() {
+    const used = new Set();
+    return state.points.map(p => {
+      let v = sanitizeVar(p.name);
+      const base = v; let i = 2;
+      while (used.has(v)) v = base + '_' + i++;
+      used.add(v);
+      return { variabel: v, nama: p.name, x: p.x, y: p.y };
+    });
+  }
+
+  function buildJSON() {
+    return JSON.stringify({
+      gambar: {
+        nama: state.imgName,
+        lebar: state.imgW,
+        tinggi: state.imgH
+      },
+      titik: buildData()
+    }, null, 2);
+  }
+
+  function buildCSV() {
+    const rows = [['variabel', 'nama', 'x', 'y']];
+    for (const d of buildData()) rows.push([d.variabel, d.nama, d.x, d.y]);
+    return rows.map(r => r.map(c => {
+      const s = String(c);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')).join('\n');
+  }
+
+  function download(filename, text, mime) {
+    const blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  document.getElementById('btnJson').addEventListener('click', () => {
+    if (!state.points.length) return toast('Belum ada titik');
+    download('koordinat.json', buildJSON(), 'application/json');
+    toast('JSON diunduh');
+  });
+
+  document.getElementById('btnCsv').addEventListener('click', () => {
+    if (!state.points.length) return toast('Belum ada titik');
+    download('koordinat.csv', buildCSV(), 'text/csv;charset=utf-8');
+    toast('CSV diunduh');
+  });
+
+  document.getElementById('btnCopy').addEventListener('click', async () => {
+    if (!state.points.length) return toast('Belum ada titik');
+    const text = state.points.length
+      ? codeEl.textContent + '\n\n/*\n' + buildJSON() + '\n*/'
+      : '';
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Kode disalin ke clipboard');
+    } catch {
+      toast('Gagal menyalin');
+    }
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    if (!state.points.length && !state.hasImage) return;
+    if (!confirm('Hapus semua titik' + (state.hasImage ? ' (gambar tetap)' : '') + '?')) return;
+    state.points = [];
+    state.selected = null;
+    state.nextId = 1;
+    renderAll();
+    toast('Semua titik dihapus');
+  });
+
+  /* ================= INPUT GAMBAR ================= */
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) loadFile(f);
+    fileInput.value = '';
+  });
+
+  emptyStage.addEventListener('click', () => fileInput.click());
+
+  /* drag & drop */
+  let dragDepth = 0;
+  window.addEventListener('dragenter', e => {
+    e.preventDefault();
+    dragDepth++;
+    if ([...e.dataTransfer.types].includes('Files')) dropOv.classList.add('on');
+  });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('dragleave', e => {
+    e.preventDefault();
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) dropOv.classList.remove('on');
+  });
+  window.addEventListener('drop', e => {
+    e.preventDefault();
+    dragDepth = 0;
+    dropOv.classList.remove('on');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  /* paste */
+  window.addEventListener('paste', e => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const it of items) {
+      if (it.type && it.type.startsWith('image/')) {
+        const f = it.getAsFile();
+        if (f) { loadFile(f); toast('Gambar dari clipboard dimuat'); }
+        return;
+      }
+    }
+  });
+
+  /* ================= KEYBOARD ================= */
+  window.addEventListener('keydown', e => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+
+    if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected != null) {
+      e.preventDefault();
+      removePoint(state.selected);
+    }
+    if (e.key === 'Escape') selectPoint(null);
+    if (e.key === '+' || e.key === '=') setZoom(state.zoom * 1.15);
+    if (e.key === '-' || e.key === '_') setZoom(state.zoom / 1.15);
+    if (e.key === '0') fitZoom();
+  });
+
+  /* ================= RESIZE ================= */
+  let rzTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(rzTimer);
+    rzTimer = setTimeout(() => { if (state.hasImage) setZoom(state.zoom, true); }, 120);
+  });
+
+  /* ================= INIT ================= */
+  renderAll();
+  setZoom(1, true);
+
+})();
+</script>
+</body>
+</html>
